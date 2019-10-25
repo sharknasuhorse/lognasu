@@ -1,0 +1,41 @@
+input {
+  file {
+    path => [ "/var/log/*.log" ]
+    tags => ["minecraft"]
+  }
+}
+
+filter {
+  if "minecraft" in [tags] {
+    grok {
+      match => [ "message", "\A\[%{TIME:timestamp}] \[(?<originator>[^\/]+)?/%{LOGLEVEL:level}]: %{GREEDYDATA:message}\Z" ]
+      overwrite => [ "message" ]
+      break_on_match => false
+    }
+
+    grok {
+      match => [ "message", "\AUUID of player %{USERNAME} is %{UUID}\Z" ]
+      add_tag => [ "player", "uuid" ]
+    }
+
+    grok {
+      match => [ "message",  "\A(?<player>[a-zA-Z0-9_]+)\[/%{IPV4:ip_address}:%{POSINT}\] logged in with entity id %{POSINT:entity_id} at \(\[(?<world>[a-zA-Z]+)\](?<pos>[^\)]+)\)\Z" ]
+      add_tag => [ "player", "join" ]
+    }
+
+    grok {
+      match => [ "message",  "^(?<player>[a-zA-Z0-9_]+) has just earned the achievement \[(?<achievement>[^\[]+)\]$" ]
+      add_tag => [ "player", "achievement" ]
+    }
+
+    grok {
+      match => [ "message", "^(?<player>[a-zA-Z0-9_]+) left the game$" ]
+      add_tag => [ "player", "part" ]
+    }
+
+    grok {
+      match => [ "message", "^<(?<player>[a-zA-Z0-9_]+)> .*$" ]
+      add_tag => [ "player", "chat" ]
+    }
+  }
+}
